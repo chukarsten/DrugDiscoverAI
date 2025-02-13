@@ -29,6 +29,7 @@ def chat():
     user_message = request.json.get("message")
     mode = request.json.get("mode")
     print(f"Mode: {mode}")
+
     print(user_message)
     # Retrieve conversation history
     history = session.get("history", [])
@@ -42,8 +43,13 @@ def chat():
     )
 
     # Generate bot response
-    openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
-    response = openai.chat.completions.create(model="llama3.2:1b", messages=messages).choices[
+    if mode == "API":
+        openai = OpenAI()
+        model = "gpt-4o-mini"
+    elif mode == "Local":
+        openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+        model = "llama3.2:1b"
+    response = openai.chat.completions.create(model=model, messages=messages).choices[
         0].message.content
 
     # Append messages to history
