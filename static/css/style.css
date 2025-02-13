@@ -30,6 +30,9 @@ body, html {
 }
 
 .chatbox {
+    display: flex;
+    flex-direction: column; /* Stack messages vertically */
+    gap: 10px; /* Add spacing between messages */
     flex: 1;
     overflow-y: auto;
     padding: var(--padding);
@@ -87,6 +90,7 @@ body, html {
 
 /* Chat Message Styles */
 .user {
+    align-self: flex-end; /* Push user messages to the right */
     text-align: right;
     margin: 5px 0;
     color: white;
@@ -98,6 +102,7 @@ body, html {
 }
 
 .assistant {
+    align-self: flex-start; /* Push assistant messages to the left */
     text-align: left;
     margin: 5px 0;
     background-color: var(--secondary-color);
