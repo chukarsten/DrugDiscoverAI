@@ -52,3 +52,4 @@ dependencies:
       - flask
       - flask_session
       - gunicorn
+      - dash
