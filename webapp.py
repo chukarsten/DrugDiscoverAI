@@ -68,8 +68,12 @@ def conversation_history():
     """Returns the full conversation history"""
     return jsonify(session.get("history", []))
 
-@app.route("/initial-message", methods=["GET"])
+@app.route("/initial-message", methods=["POST"])
 def initial_message():
+    # Parse the mode from the incoming request body
+    data = request.get_json()
+    mode = data.get("mode", "Local")  # Default to "Local" if mode is not provided
+
     system_prompt = f"You are Donald Trump.  Speak with an outrageous Donald Trump accent and use all of his mannerisms.\
       Find a way to constantly talk about China and bring all conversations back to denigrating Trump's political rivals. "
     intro_prompt = f"Introduce yourself. Don't respond in huge blocks of text.  Use paragraphs to make it readable."
@@ -81,8 +85,13 @@ def initial_message():
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": intro_prompt}
     ]
-    openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
-    response = openai.chat.completions.create(model="llama3.2:1b", messages=messages)
+    if mode == "API":
+        openai = OpenAI()
+        model = "gpt-4o-mini"
+    elif mode == "Local":
+        openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+        model = "llama3.2:1b"
+    response = openai.chat.completions.create(model=model, messages=messages)
     response_message = response.choices[0].message.content
     print(response_message)
     print(f"Model: {response.model}, Prompt Tokens: {response.usage.prompt_tokens}, Completion Tokens: {response.usage.completion_tokens}")

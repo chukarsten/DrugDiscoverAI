@@ -144,7 +144,7 @@
             <!-- Place the toggle switch here -->
     <div class="toggle-container">
         <label class="switch">
-          <input type="checkbox" id="modeToggle">
+          <input type="checkbox" id="modeToggle" checked>
           <span class="slider"></span>
         </label>
         <p id="modeLabel">Current Mode: Local</p>
@@ -221,13 +221,28 @@
           }
         }
 
-        // Function to fetch and display the initial bot message
         function loadInitialMessage() {
-            fetch("/initial-message")
-            .then(response => response.json())
+            const mode = toggle.checked ? 'API' : 'Local'; // Determine the mode based on the toggle state
+
+            fetch("/initial-message", {
+                method: "POST", // Changed to POST for sending the mode
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mode: mode }) // Pass mode to backend
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP Error: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 let chatbox = document.getElementById("chatbox");
                 chatbox.innerHTML += `<div class='assistant'>Bot: ${data.reply}</div>`;
+            })
+            .catch(error => {
+                console.error('Error during initial fetch:', error);
+                let chatbox = document.getElementById("chatbox");
+                chatbox.innerHTML += `<div class='assistant error'>Error: Unable to load the initial message.</div>`;
             });
         }
 
