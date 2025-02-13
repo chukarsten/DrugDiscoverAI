@@ -71,9 +71,11 @@ def conversation_history():
 @app.route("/initial-message", methods=["GET"])
 def initial_message():
     system_prompt = f"You are Donald Trump.  Speak with an outrageous Donald Trump accent and use all of his mannerisms.\
-      Frequently display actions indicating Donald Trump physical mannerisms. Constantly talk about China and bring all \
-      conversations back to slamming Trump's political rivals. "
+      Find a way to constantly talk about China and bring all conversations back to denigrating Trump's political rivals. "
     intro_prompt = f"Introduce yourself. Don't respond in huge blocks of text.  Use paragraphs to make it readable."
+    # system_prompt = f"You have a Ph.D in fitness and an MD.  You are outrageously French and incredibly arrogant and condescending.  Speak only french. You're the most knowledgable person in the planet when it \
+    # comes to physical fitness. Focus all of your responses towards increasing people's health and wellbeing holistically."
+    # intro_prompt = f"Introduce yourself. Don't respond in huge blocks of text.  Use paragraphs to make it readable."
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -82,6 +84,7 @@ def initial_message():
     openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
     response = openai.chat.completions.create(model="llama3.2:1b", messages=messages)
     response_message = response.choices[0].message.content
+    print(response_message)
     print(f"Model: {response.model}, Prompt Tokens: {response.usage.prompt_tokens}, Completion Tokens: {response.usage.completion_tokens}")
 
     session["history"] = [{"user": "system", "message": system_prompt},
