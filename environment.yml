@@ -49,3 +49,5 @@ dependencies:
       - feedparser
       - twilio
       - pydub
+      - flask
+      - flask_session

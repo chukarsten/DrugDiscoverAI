@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask Chatbot</title>
+    <style>
+        /* Make the body take up the full viewport */
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Chat container fills the entire screen */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Full viewport height */
+            width: 100vw; /* Full viewport width */
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        /* Chatbox that fills most of the screen */
+        .chatbox {
+            flex: 1; /* Takes up all available space */
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+
+        /* Input container sticks to the bottom */
+        .input-container {
+            display: flex;
+            padding: 10px;
+            background: white;
+            border-top: 1px solid #ccc;
+        }
+
+        /* Input field takes most of the space */
+        #userInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        /* Send button */
+        #sendButton {
+            margin-left: 10px;
+            padding: 10px 15px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        #sendButton:hover {
+            background-color: #0056b3;
+        }
+
+        /* Style for chat messages */
+        .user {
+            text-align: right;
+            margin: 5px 0;
+            color: white;
+            background-color: #007bff;
+            padding: 10px;
+            border-radius: 10px;
+            display: inline-block;
+            max-width: 80%;
+        }
+
+        .bot {
+            text-align: left;
+            margin: 5px 0;
+            background-color: #e0e0e0;
+            padding: 10px;
+            border-radius: 10px;
+            display: inline-block;
+            max-width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Flask Chatbot</h1>
+    <div class="chat-container">
+        <div id="chatbox" class="chatbox"></div>
+        <div class="input-container">
+        <input type="text" id="userInput" placeholder="Type a message..." />
+        <button id="sendButton" onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        function sendMessage() {
+            let userInput = document.getElementById("userInput").value.trim();
+            if (!userInput) return;
+
+            let chatbox = document.getElementById("chatbox");
+            chatbox.innerHTML += `<div class='user'>You: ${userInput}</div>`;
+
+            fetch("/chat", {
+                method: "POST",
+                body: JSON.stringify({ message: userInput }),
+                headers: { "Content-Type": "application/json" }
+            })
+            .then(response => response.json())
+            .then(data => {
+                chatbox.innerHTML += `<div class='bot'>Bot: ${data.reply}</div>`;
+                chatbox.scrollTop = chatbox.scrollHeight;
+            });
+
+            document.getElementById("userInput").value = "";
+        }
+
+        // Add event listener for "Enter" key
+        document.getElementById("userInput").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();  // Prevent form submission (if inside a form)
+                sendMessage();
+            }
+        });
+
+        // Function to fetch and display the initial bot message
+        function loadInitialMessage() {
+            fetch("/initial-message")
+            .then(response => response.json())
+            .then(data => {
+                let chatbox = document.getElementById("chatbox");
+                chatbox.innerHTML += `<div class='bot'>Bot: ${data.reply}</div>`;
+            });
+        }
+
+        // Load initial bot message when page loads
+        window.onload = loadInitialMessage;
+    </script>
+</body>
+</html>

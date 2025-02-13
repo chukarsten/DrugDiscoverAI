@@ -42,7 +42,7 @@ def find_smallest_local_model(available_model_dict):
 
 class ModelPicker():
     def __init__(self, model="smallest"):
-        if model not in local_model_options or not "smallest":
+        if model not in local_model_options and model != "smallest":
             raise ValueError(f"Model must be either 'smallest' or {local_model_options.keys()}")
         self.base_model = find_smallest_local_model(local_model_options) if model == "smallest" else "llama3.3"
         self.openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
@@ -67,12 +67,16 @@ class ModelPicker():
         response = self.openai.chat.completions.create(model=self.base_model, messages=self.messages).choices[0].message.content
         print(response)
         self.app_assistant_message(response)
-        while response not in ["api"] + local_model_options.keys():
+        while response not in ["api"] + list(local_model_options.keys()):
             user_message = input("Well?")
             self.app_user_message(user_message)
             response = self.openai.chat.completions.create(model=self.base_model, messages=self.messages).choices[0].message.content
             print(response)
         return response
+
+    def web_response(self):
+        response = self.openai.chat.completions.create(model=self.base_model, messages=self.messages).choices[
+            0].message.content
 
     def app_assistant_message(self, message):
         self.messages.append({"role": "assistant", "content": message})
@@ -82,5 +86,5 @@ class ModelPicker():
 
 if __name__ == "__main__":
     model_picker = ModelPicker(model="llama3.3")
-    print(model_picker.decide_on_model())
+    # print(model_picker.decide_on_model())
 
