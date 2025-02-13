@@ -71,6 +71,8 @@ def conversation_history():
 @app.route("/initial-message", methods=["POST"])
 def initial_message():
     # Parse the mode from the incoming request body
+    if not request.is_json:  # Ensures the request has JSON content
+        return jsonify({"error": "Request must be JSON"}), 400
     data = request.get_json()
     mode = data.get("mode", "Local")  # Default to "Local" if mode is not provided
 
