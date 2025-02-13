@@ -1,18 +1,43 @@
-// Switch
+// Constants
+const API_MODE = 'API';
+const LOCAL_MODE = 'Local';
+const CLASS_USER = 'user';
+const CLASS_ASSISTANT = 'assistant';
+const CLASS_ERROR = 'error';
+
+// DOM elements
 const toggle = document.getElementById('modeToggle');
 const modeLabel = document.getElementById('modeLabel');
+const userInput = document.getElementById("userInput");
+const chatbox = document.getElementById("chatbox");
 
+// Helper functions
+function appendMessage(content, senderClass) {
+    chatbox.innerHTML += `<div class='${senderClass}'>${content}</div>`;
+    chatbox.scrollTop = chatbox.scrollHeight;
+}
+
+function handleFetchError(chatbox, errorMessage) {
+    console.error(errorMessage);
+    appendMessage(`Error: ${errorMessage}`, `${CLASS_ASSISTANT} ${CLASS_ERROR}`);
+}
+
+function determineMode() {
+    return toggle.checked ? API_MODE : LOCAL_MODE;
+}
+
+// Main functionality
 function sendMessage() {
-    let userInput = document.getElementById("userInput").value.trim();
-    if (!userInput) return;
+    const userInputValue = userInput.value.trim();
+    if (!userInputValue) return;
 
-    let chatbox = document.getElementById("chatbox");
-    chatbox.innerHTML += `<div class='user'>You: ${userInput}</div>`;
-    const mode = toggle.checked ? 'API' : 'Local'
+    appendMessage(`You: ${userInputValue}`, CLASS_USER);
+
+    const mode = determineMode();
     fetch("/chat", {
         method: "POST",
-        body: JSON.stringify({message: userInput, mode: mode}),
-        headers: {"Content-Type": "application/json"}
+        body: JSON.stringify({ message: userInputValue, mode }),
+        headers: { "Content-Type": "application/json" }
     })
         .then(response => {
             if (!response.ok) {
@@ -21,75 +46,64 @@ function sendMessage() {
             return response.json();
         })
         .then(data => {
-            chatbox.innerHTML += `<div class='assistant'>Bot: ${data.reply}</div>`;
-            chatbox.scrollTop = chatbox.scrollHeight;
+            appendMessage(`Bot: ${data.reply}`, CLASS_ASSISTANT);
         })
         .catch(error => {
-            console.error('Error during fetch:', error);
-            chatbox.innerHTML += `<div class='assistant error'>Error: Unable to process your message.</div>`;
+            handleFetchError(chatbox, 'Unable to process your message.');
         });
 
-    document.getElementById("userInput").value = "";
+    userInput.value = "";
 }
 
-// Add event listener for "Enter" key
-document.getElementById("userInput").addEventListener("keypress", function (event) {
-    if (event.key === "Enter") {
-        event.preventDefault();  // Prevent form submission (if inside a form)
-        sendMessage();
-    }
-});
+function loadInitialMessage() {
+    const mode = determineMode();
+    fetch("/initial-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode })
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP Error: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            appendMessage(`Bot: ${data.reply}`, CLASS_ASSISTANT);
+        })
+        .catch(error => {
+            handleFetchError(chatbox, 'Unable to load the initial message.');
+        });
+}
 
+function updateModeLabel(mode) {
+    modeLabel.textContent = `Current Mode: ${mode}`;
+}
 
-toggle.addEventListener('change', () => {
-    if (toggle.checked) {
-        modeLabel.textContent = "Current Mode: API";
-        setMode('API'); // Function to set mode to API
-    } else {
-        modeLabel.textContent = "Current Mode: Local";
-        setMode('Local'); // Function to set mode to Local
-    }
-});
+function handleToggleChange() {
+    const mode = determineMode();
+    updateModeLabel(mode);
+    setMode(mode);
+}
 
 function setMode(mode) {
-    // Send the mode to the back-end or handle front-end logic
-    // Example for a fetch request to API if needed:
-    if (mode === 'API') {
+    if (mode === API_MODE) {
         fetch('/api-endpoint')
             .then(response => response.json())
-            .then(data => {
-                console.log(data); // Handle API response
-            });
+            .then(data => console.log(data))
+            .catch(error => console.error('Failed to fetch API data:', error));
     } else {
-        // Handle local mode logic
         console.log('Using Local Mode');
     }
 }
 
-function loadInitialMessage() {
-    const mode = toggle.checked ? 'API' : 'Local'; // Determine the mode based on the toggle state
+// Event listeners
+userInput.addEventListener("keypress", function (event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        sendMessage();
+    }
+});
 
-    fetch("/initial-message", {
-        method: "POST", // Changed to POST for sending the mode
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({mode: mode}) // Pass mode to backend
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP Error: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            let chatbox = document.getElementById("chatbox");
-            chatbox.innerHTML += `<div class='assistant'>Bot: ${data.reply}</div>`;
-        })
-        .catch(error => {
-            console.error('Error during initial fetch:', error);
-            let chatbox = document.getElementById("chatbox");
-            chatbox.innerHTML += `<div class='assistant error'>Error: Unable to load the initial message.</div>`;
-        });
-}
-
-// Load initial bot message when page loads
+toggle.addEventListener('change', handleToggleChange);
 window.onload = loadInitialMessage;

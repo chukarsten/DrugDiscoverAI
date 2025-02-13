@@ -1,71 +1,97 @@
-/* Make the body take up the full viewport */
+/* Theme Variables */
+:root {
+    --primary-color: #007bff;
+    --hover-color: #0056b3;
+    --secondary-color: #e0e0e0;
+    --border-color: #ccc;
+    --background-light: #f9f9f9;
+    --padding: 10px;
+    --border-radius: 5px;
+    --font-family: Arial, sans-serif;
+}
+
+/* Global Styles */
 body, html {
     height: 100%;
     margin: 0;
     display: flex;
     flex-direction: column;
-    font-family: Arial, sans-serif;
+    font-family: var(--font-family);
 }
 
-/* Chat container fills the entire screen */
-.chat-container {
+/* Chat Layout */
+.chat-layout {
     display: flex;
     flex-direction: column;
-    height: 100vh; /* Full viewport height */
-    width: 100vw; /* Full viewport width */
-    padding: 10px;
+    height: 100vh;
+    width: 100vw;
+    padding: var(--padding);
     box-sizing: border-box;
 }
 
-/* Chatbox that fills most of the screen */
 .chatbox {
-    flex: 1; /* Takes up all available space */
-    overflow-y: auto;
-    padding: 10px;
-    border: 1px solid #ccc;
-    background-color: #f9f9f9;
-}
-
-/* Input container sticks to the bottom */
-.input-container {
-    display: flex;
-    padding: 10px;
-    background: white;
-    border-top: 1px solid #ccc;
-}
-
-/* Input field takes most of the space */
-#userInput {
     flex: 1;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 16px;
+    overflow-y: auto;
+    padding: var(--padding);
+    border: 1px solid var(--border-color);
+    background-color: var(--background-light);
 }
 
-/* Send button */
-#sendButton {
-    margin-left: 10px;
+/* Input and Button Styles */
+.input-container {
+    display: flex; /* Ensures flexible layout */
+    padding: 0; /* Remove padding to give full width for flex alignment */
+    box-sizing: border-box; /* Includes borders in width calculation */
+    background: white;
+    border-top: 1px solid var(--border-color);
+    width: 100%; /* Ensure input-container spans the full screen */
+}
+
+/* Input Text Box */
+#userInput {
+    flex-grow: 1; /* Ensures the input box takes up all available space */
+    padding: var(--padding);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    width: 100%; /* Ensures the input box spans the full width of allocated space */
+    box-sizing: border-box; /* Includes padding and border in the element's total width/height */
+}
+
+/* Submit Button */
+#submitButton {
+    margin-left: var(--padding);
+    padding: 10px 15px;
+    flex-shrink: 0; /* Prevent shrinking */
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.button {
     padding: 10px 15px;
     border: none;
-    background-color: #007bff;
+    background-color: var(--primary-color);
     color: white;
-    border-radius: 5px;
+    border-radius: var(--border-radius);
     cursor: pointer;
     font-size: 16px;
 }
 
-#sendButton:hover {
-    background-color: #0056b3;
+.button:hover {
+    background-color: var(--hover-color);
 }
 
-/* Style for chat messages */
+/* Chat Message Styles */
 .user {
     text-align: right;
     margin: 5px 0;
     color: white;
-    background-color: #007bff;
-    padding: 10px;
+    background-color: var(--primary-color);
+    padding: var(--padding);
     border-radius: 10px;
     display: inline-block;
     max-width: 80%;
@@ -74,13 +100,14 @@ body, html {
 .assistant {
     text-align: left;
     margin: 5px 0;
-    background-color: #e0e0e0;
-    padding: 10px;
+    background-color: var(--secondary-color);
+    padding: var(--padding);
     border-radius: 10px;
     display: inline-block;
     max-width: 80%;
 }
 
+/* Toggle Switch */
 .switch {
     position: relative;
     display: inline-block;
@@ -101,7 +128,7 @@ body, html {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #ccc;
+    background-color: var(--border-color);
     transition: 0.4s;
     border-radius: 34px;
 }
