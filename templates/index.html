@@ -78,7 +78,7 @@
             max-width: 80%;
         }
 
-        .bot {
+        .assistant {
             text-align: left;
             margin: 5px 0;
             background-color: #e0e0e0;
@@ -90,7 +90,7 @@
     </style>
 </head>
 <body>
-    <h1>Simple Flask Chatbot</h1>
+    <h1>KarstenBot 69</h1>
     <div class="chat-container">
         <div id="chatbox" class="chatbox"></div>
         <div class="input-container">
@@ -113,7 +113,7 @@
             })
             .then(response => response.json())
             .then(data => {
-                chatbox.innerHTML += `<div class='bot'>Bot: ${data.reply}</div>`;
+                chatbox.innerHTML += `<div class='assistant'>Bot: ${data.reply}</div>`;
                 chatbox.scrollTop = chatbox.scrollHeight;
             });
 
@@ -134,7 +134,7 @@
             .then(response => response.json())
             .then(data => {
                 let chatbox = document.getElementById("chatbox");
-                chatbox.innerHTML += `<div class='bot'>Bot: ${data.reply}</div>`;
+                chatbox.innerHTML += `<div class='assistant'>Bot: ${data.reply}</div>`;
             });
         }
 

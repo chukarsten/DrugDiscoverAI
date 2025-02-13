@@ -1,3 +1,4 @@
+import logging
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
 from openai import OpenAI
@@ -7,19 +8,6 @@ app = Flask(__name__)
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SECRET_KEY"] = "supersecretkey"
 Session(app)
-
-# Simple chatbot logic
-def chatbot_response(message, history):
-    responses = {
-        "hello": "Hi there! How can I help you?",
-        "how are you": "I'm just a bot, but I'm doing great!",
-        "bye": "Goodbye! Have a great day!",
-    }
-    # Simple context tracking: Check last user message
-    if len(history) > 1 and history[-2]["user"] == "hello":
-        return "You already said hello! What else can I do for you?"
-
-    return responses.get(message.lower(), "I'm not sure how to respond to that.")
 
 @app.route("/")
 def index():
@@ -34,17 +22,27 @@ def chat():
     # Retrieve conversation history
     history = session.get("history", [])
 
+    # Rebuild LLM message history
+    messages = []
+    for message in history:
+        messages.append({"role": message["user"], "content": message["message"]})
+    messages.append(
+        {"role": "user", "content": user_message}
+    )
+
     # Generate bot response
-    bot_reply = chatbot_response(user_message, history)
+    openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+    response = openai.chat.completions.create(model="llama3.2:1b", messages=messages).choices[
+        0].message.content
 
     # Append messages to history
     history.append({"user": "user", "message": user_message})
-    history.append({"user": "bot", "message": bot_reply})
+    history.append({"user": "assistant", "message": response})
 
     # Save back to session
     session["history"] = history
 
-    return jsonify({"reply": bot_reply})
+    return jsonify({"reply": response})
 
 @app.route("/conversation-history", methods=["GET"])
 def conversation_history():
@@ -53,8 +51,8 @@ def conversation_history():
 
 @app.route("/initial-message", methods=["GET"])
 def initial_message():
-    system_prompt = f"You are infected with the super woke mind virus and you only respond in pro-DEI nonsense."
-    intro_prompt = f"Introduce yourself. And go on and on about pronouns."
+    system_prompt = f"You are Donald Trump.  Speak with an outrageous Donald Trump accent and use all of his mannerisms."
+    intro_prompt = f"Introduce yourself. And go on and on about CHINA.  Don't respond in huge blocks of text.  Use paragraphs to make it readable."
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -63,6 +61,10 @@ def initial_message():
     openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
     response = openai.chat.completions.create(model="llama3.2:1b", messages=messages).choices[
         0].message.content
+
+    session["history"] = [{"user": "system", "message": system_prompt},
+                          {"user": "user", "message": intro_prompt},
+                          {"user": "assistant", "message": response}]
     return jsonify({"reply": response})
 
 if __name__ == "__main__":
