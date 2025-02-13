@@ -152,6 +152,9 @@
     </div>
 
     <script>
+        // Switch
+        const toggle = document.getElementById('modeToggle');
+        const modeLabel = document.getElementById('modeLabel');
 
         function sendMessage() {
             let userInput = document.getElementById("userInput").value.trim();
@@ -165,10 +168,19 @@
                 body: JSON.stringify({ message: userInput, mode: mode }),
                 headers: { "Content-Type": "application/json" }
             })
-            .then(response => response.json())
+            .then(response => {
+                 if (!response.ok) {
+                     throw new Error(`HTTP Error: ${response.status}`);
+                 }
+                 return response.json();
+            })
             .then(data => {
                 chatbox.innerHTML += `<div class='assistant'>Bot: ${data.reply}</div>`;
                 chatbox.scrollTop = chatbox.scrollHeight;
+            })
+            .catch(error => {
+                console.error('Error during fetch:', error);
+                chatbox.innerHTML += `<div class='assistant error'>Error: Unable to process your message.</div>`;
             });
 
             document.getElementById("userInput").value = "";
@@ -182,9 +194,7 @@
             }
         });
 
-        // Switch
-        const toggle = document.getElementById('modeToggle');
-        const modeLabel = document.getElementById('modeLabel');
+
 
         toggle.addEventListener('change', () => {
           if (toggle.checked) {
