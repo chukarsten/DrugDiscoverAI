@@ -16,9 +16,20 @@ def index():
 
     return render_template("index.html")
 
+@app.route('/api-endpoint', methods=['GET'])
+def api_mode():
+    print(request.args)
+    if request.args.get('mode') == 'API':
+        return jsonify({"message": "You are using API mode!"})
+    else:
+        return jsonify({"message": "You are using Local mode!"})
+
 @app.route("/chat", methods=["POST"])
 def chat():
     user_message = request.json.get("message")
+    mode = request.json.get("mode")
+    print(f"Mode: {mode}")
+    print(user_message)
     # Retrieve conversation history
     history = session.get("history", [])
 

@@ -87,6 +87,51 @@
             display: inline-block;
             max-width: 80%;
         }
+
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 60px;
+          height: 34px;
+        }
+
+        .switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #ccc;
+          transition: 0.4s;
+          border-radius: 34px;
+        }
+
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 26px;
+          width: 26px;
+          border-radius: 50%;
+          left: 4px;
+          bottom: 4px;
+          background-color: white;
+          transition: 0.4s;
+        }
+
+        input:checked + .slider {
+          background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+          transform: translateX(26px);
+        }
     </style>
 </head>
 <body>
@@ -96,19 +141,28 @@
         <div class="input-container">
         <input type="text" id="userInput" placeholder="Type a message..." />
         <button id="sendButton" onclick="sendMessage()">Send</button>
+            <!-- Place the toggle switch here -->
+    <div class="toggle-container">
+        <label class="switch">
+          <input type="checkbox" id="modeToggle">
+          <span class="slider"></span>
+        </label>
+        <p id="modeLabel">Current Mode: Local</p>
+        </div>
     </div>
 
     <script>
+
         function sendMessage() {
             let userInput = document.getElementById("userInput").value.trim();
             if (!userInput) return;
 
             let chatbox = document.getElementById("chatbox");
             chatbox.innerHTML += `<div class='user'>You: ${userInput}</div>`;
-
+            const mode = toggle.checked ? 'API' : 'Local'
             fetch("/chat", {
                 method: "POST",
-                body: JSON.stringify({ message: userInput }),
+                body: JSON.stringify({ message: userInput, mode: mode }),
                 headers: { "Content-Type": "application/json" }
             })
             .then(response => response.json())
@@ -127,6 +181,35 @@
                 sendMessage();
             }
         });
+
+        // Switch
+        const toggle = document.getElementById('modeToggle');
+        const modeLabel = document.getElementById('modeLabel');
+
+        toggle.addEventListener('change', () => {
+          if (toggle.checked) {
+            modeLabel.textContent = "Current Mode: API";
+            setMode('API'); // Function to set mode to API
+          } else {
+            modeLabel.textContent = "Current Mode: Local";
+            setMode('Local'); // Function to set mode to Local
+          }
+        });
+
+        function setMode(mode) {
+          // Send the mode to the back-end or handle front-end logic
+          // Example for a fetch request to API if needed:
+          if (mode === 'API') {
+            fetch('/api-endpoint')
+              .then(response => response.json())
+              .then(data => {
+                console.log(data); // Handle API response
+              });
+          } else {
+            // Handle local mode logic
+            console.log('Using Local Mode');
+          }
+        }
 
         // Function to fetch and display the initial bot message
         function loadInitialMessage() {
