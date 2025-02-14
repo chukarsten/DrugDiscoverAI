@@ -43,7 +43,7 @@ def get_model_response(mode, messages):
         claude = anthropic.Anthropic()
         response = claude.messages.create(
             model=model,
-            max_tokens=200,
+            max_tokens=500,
             temperature=0.7,
             system=messages[0]["content"],
             messages=messages[1:],

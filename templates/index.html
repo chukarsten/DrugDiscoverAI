@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flask Chatbot</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
 </head>
 <body>
 <h1>KarstenBot 69</h1>
@@ -15,15 +16,15 @@
         <button id="sendButton" onclick="sendMessage()">Send</button>
         <!-- Place the model selection here -->
         <div class="dropdown-container">
-        <label for="modeDropdown">Select Mode:</label>
-        <select id="modeDropdown">
-            <option value="ChatGPT">ChatGPT</option>
-            <option value="Gemini">Gemini</option>
-            <option value="Claude">Claude</option>
-        </select>
-</div>
+            <label for="modeDropdown">Select Mode:</label>
+            <select id="modeDropdown">
+                <option value="ChatGPT">ChatGPT</option>
+                <option value="Gemini">Gemini</option>
+                <option value="Claude">Claude</option>
+            </select>
+        </div>
     </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
