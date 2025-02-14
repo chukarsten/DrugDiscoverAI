@@ -15,13 +15,15 @@
         <button id="sendButton" onclick="sendMessage()">Send</button>
         <!-- Place the model selection here -->
         <div class="dropdown-container">
-        <label for="modeDropdown">Select Mode:</label>
-        <select id="modeDropdown">
-            <option value="ChatGPT">ChatGPT</option>
-            <option value="Gemini">Gemini</option>
-            <option value="Claude">Claude</option>
-        </select>
-</div>
+            <label for="modeDropdown">Select Mode:</label>
+            <select id="modeDropdown">
+                <option value="ChatGPT">ChatGPT</option>
+                {% if gemini_enabled %}
+                <option value="Gemini">Gemini</option>
+                {% endif %}
+                <option value="Claude">Claude</option>
+            </select>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
