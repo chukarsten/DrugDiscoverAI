@@ -11,10 +11,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const modeLabel = document.getElementById('modeLabel');
     const userInput = document.getElementById("userInput");
     const chatbox = document.getElementById("chatbox");
+    var md = window.markdownit();  // Create a markdown-it instance
+
 
     // Helper functions
     function appendMessage(content, senderClass) {
-        chatbox.innerHTML += `<div class='${senderClass}'>${content}</div>`;
+        const htmlContent = DOMPurify.sanitize(md.render(content)); // Sanitize and convert markdown to HTML
+        chatbox.innerHTML += `<div class='${senderClass}'>${htmlContent}</div>`;
         chatbox.scrollTop = chatbox.scrollHeight;
     }
 
@@ -32,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const userInputValue = userInput.value.trim();
         if (!userInputValue) return;
 
-        appendMessage(`You: ${userInputValue}`, CLASS_USER);
+        appendMessage(`${userInputValue}`, CLASS_USER);
 
         const mode = determineMode();
         fetch("/chat", {
@@ -47,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
-                appendMessage(`Bot: ${data.reply}`, CLASS_ASSISTANT);
+                appendMessage(`${data.reply}`, CLASS_ASSISTANT);
             })
             .catch(error => {
                 handleFetchError(chatbox, 'Unable to process your message.');
@@ -70,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
-                appendMessage(`Bot: ${data.reply}`, CLASS_ASSISTANT);
+                appendMessage(`${data.reply}`, CLASS_ASSISTANT);
             })
             .catch(error => {
                 handleFetchError(chatbox, 'Unable to load the initial message.');
