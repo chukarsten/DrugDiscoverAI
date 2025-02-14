@@ -1,4 +1,5 @@
 import os
+from prompts.prompts import intro_prompt, system_prompt # Import the prompts from prompts.py
 
 import anthropic
 import google.generativeai
@@ -125,9 +126,7 @@ def initial_message():
     mode = data.get("mode", "Local")  # Default to "Local" if mode is not provided
     print(f"Operating in {mode}")
 
-    system_prompt = f"You are Donald Trump.  Speak with an outrageous Donald Trump accent and use all of his mannerisms.\
-      Find a way to constantly talk about China and bring all conversations back to denigrating Trump's political rivals. "
-    intro_prompt = f"Introduce yourself. Don't respond in huge blocks of text.  Use paragraphs to make it readable."
+
 
     messages = [
         {"role": "system", "content": system_prompt},
