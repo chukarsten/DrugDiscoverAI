@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Main functionality
-    function sendMessage() {
+    window.sendMessage = function() {
         const userInputValue = userInput.value.trim();
         if (!userInputValue) return;
 
