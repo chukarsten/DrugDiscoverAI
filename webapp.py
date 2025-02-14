@@ -15,6 +15,9 @@ app.config["SECRET_KEY"] = "supersecretkey"
 
 Session(app)
 
+# Check if Gemini is enabled
+GEMINI_ENABLED = os.getenv("GEMINI_ENABLED", "false").lower() == "true"
+
 
 def get_model_response(mode, messages):
     if mode == "ChatGPT":
@@ -31,7 +34,7 @@ def get_model_response(mode, messages):
         input_tokens = response.usage.prompt_tokens
         output_tokens = response.usage.completion_tokens
         response_message = response.choices[0].message.content
-    elif mode == "Gemini":
+    elif mode == "Gemini" and GEMINI_ENABLED:
         model = 'gemini-2.0-flash-exp'
         gemini = google.generativeai.GenerativeModel(
             model_name=model,
@@ -61,7 +64,7 @@ def index():
     if "history" not in session:
         session["history"] = [{"user": "bot", "message": initial_message()}]
 
-    return render_template("index.html")
+    return render_template("index.html", gemini_enabled=GEMINI_ENABLED)
 
 
 @app.route('/api-endpoint', methods=['GET'])
