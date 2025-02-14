@@ -19,7 +19,9 @@
             <label for="modeDropdown">Select Mode:</label>
             <select id="modeDropdown">
                 <option value="ChatGPT">ChatGPT</option>
+                {% if gemini_enabled %}
                 <option value="Gemini">Gemini</option>
+                {% endif %}
                 <option value="Claude">Claude</option>
             </select>
         </div>

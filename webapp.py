@@ -1,4 +1,5 @@
 import os
+from prompts.prompts import intro_prompt, system_prompt # Import the prompts from prompts.py
 
 import anthropic
 import google.generativeai
@@ -14,6 +15,9 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["SECRET_KEY"] = "supersecretkey"
 
 Session(app)
+
+# Check if Gemini is enabled
+GEMINI_ENABLED = os.getenv("GEMINI_ENABLED", "false").lower() == "true"
 
 
 def get_model_response(mode, messages):
@@ -31,7 +35,7 @@ def get_model_response(mode, messages):
         input_tokens = response.usage.prompt_tokens
         output_tokens = response.usage.completion_tokens
         response_message = response.choices[0].message.content
-    elif mode == "Gemini":
+    elif mode == "Gemini" and GEMINI_ENABLED:
         model = 'gemini-2.0-flash-exp'
         gemini = google.generativeai.GenerativeModel(
             model_name=model,
@@ -61,7 +65,7 @@ def index():
     if "history" not in session:
         session["history"] = [{"user": "bot", "message": initial_message()}]
 
-    return render_template("index.html")
+    return render_template("index.html", gemini_enabled=GEMINI_ENABLED)
 
 
 @app.route('/api-endpoint', methods=['GET'])
@@ -122,9 +126,7 @@ def initial_message():
     mode = data.get("mode", "Local")  # Default to "Local" if mode is not provided
     print(f"Operating in {mode}")
 
-    system_prompt = f"You are Donald Trump.  Speak with an outrageous Donald Trump accent and use all of his mannerisms.\
-      Find a way to constantly talk about China and bring all conversations back to denigrating Trump's political rivals. "
-    intro_prompt = f"Introduce yourself. Don't respond in huge blocks of text.  Use paragraphs to make it readable."
+
 
     messages = [
         {"role": "system", "content": system_prompt},
