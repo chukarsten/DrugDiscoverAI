@@ -3,10 +3,13 @@ from prompts.prompts import intro_prompt, system_prompt # Import the prompts fro
 
 import anthropic
 import google.generativeai
-import logging
+import json
+
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
 from openai import OpenAI
+
+from tools.chemistry.chemistry import tools, validate_molecule, analyze_molecule
 
 app = Flask(__name__)
 
@@ -20,14 +23,48 @@ Session(app)
 GEMINI_ENABLED = os.getenv("GEMINI_ENABLED", "false").lower() == "true"
 
 
+def handle_tool_call(message):
+    tool_call = message.tool_calls[0]
+    tool_name = tool_call.function.name
+    print(f"Calling tool {tool_name}")
+    arguments = json.loads(tool_call.function.arguments)
+    if tool_name == "validate_molecule":
+        smiles = arguments.get('smiles')
+        mol = validate_molecule(smiles)
+        response = {
+            "role": "tool",
+            "content": json.dumps({"smiles": smiles, "mol": mol}),
+            "tool_call_id": tool_call.id
+        }
+    elif tool_name == "analyze_molecule":
+        smiles = arguments.get('smiles')
+        analysis_results = analyze_molecule(smiles)
+        response = {
+            "role": "tool",
+            "content": json.dumps({"smiles": smiles, "analysis_results": analysis_results}),
+            "tool_call_id": tool_call.id
+        }
+    return response
+
+
 def get_model_response(mode, messages):
     if mode == "ChatGPT":
         openai = OpenAI()
         model = "gpt-4o-mini"
-        response = openai.chat.completions.create(model=model, messages=messages)
+        response = openai.chat.completions.create(model=model, messages=messages, tools=tools)
         input_tokens = response.usage.prompt_tokens
         output_tokens = response.usage.completion_tokens
+
+        # Handle Tool Calls
+        if response.choices[0].finish_reason == "tool_calls":
+            print("Calling tool!")
+            message = response.choices[0].message
+            response = handle_tool_call(message)
+            messages.append(message)
+            messages.append(response)
+            response = openai.chat.completions.create(model=model, messages=messages)
         response_message = response.choices[0].message.content
+
     elif mode == "Local":
         openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
         model = "llama3.2:1b"
