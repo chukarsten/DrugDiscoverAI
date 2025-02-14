@@ -1,13 +1,60 @@
+import os
+
+import anthropic
+import google.generativeai
 import logging
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
 from openai import OpenAI
+
 app = Flask(__name__)
 
 # Configure Flask session (stores in server-side memory)
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SECRET_KEY"] = "supersecretkey"
+
 Session(app)
+
+
+def get_model_response(mode, messages):
+    if mode == "ChatGPT":
+        openai = OpenAI()
+        model = "gpt-4o-mini"
+        response = openai.chat.completions.create(model=model, messages=messages)
+        input_tokens = response.usage.prompt_tokens
+        output_tokens = response.usage.completion_tokens
+        response_message = response.choices[0].message.content
+    elif mode == "Local":
+        openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+        model = "llama3.2:1b"
+        response = openai.chat.completions.create(model=model, messages=messages)
+        input_tokens = response.usage.prompt_tokens
+        output_tokens = response.usage.completion_tokens
+        response_message = response.choices[0].message.content
+    elif mode == "Gemini":
+        model = 'gemini-2.0-flash-exp'
+        gemini = google.generativeai.GenerativeModel(
+            model_name=model,
+            system_instruction=messages[0]["content"]
+        )
+        response = gemini.generate_content(messages[1:])
+    elif mode == "Claude":
+        model = "claude-3-5-sonnet-latest"
+        claude = anthropic.Anthropic()
+        response = claude.messages.create(
+            model=model,
+            max_tokens=200,
+            temperature=0.7,
+            system=messages[0]["content"],
+            messages=messages[1:],
+        )
+        input_tokens = response.usage.input_tokens
+        output_tokens = response.usage.output_tokens
+        response_message = response.content[0].text
+
+    print(f"Model: {model}, Prompt Tokens: {input_tokens}, Completion Tokens: {output_tokens}")
+    return response_message
+
 
 @app.route("/")
 def index():
@@ -16,13 +63,18 @@ def index():
 
     return render_template("index.html")
 
+
 @app.route('/api-endpoint', methods=['GET'])
 def api_mode():
-    print(request.args)
-    if request.args.get('mode') == 'API':
-        return jsonify({"message": "You are using API mode!"})
+    if request.args.get('mode') == 'ChatGPT':
+        return jsonify({"message": "You are using ChatGPT mode!"})
+    if request.args.get('mode') == 'Gemini':
+        return jsonify({"message": "You are using Gemini mode!"})
+    if request.args.get('mode') == 'Claude':
+        return jsonify({"message": "You are using Claude mode!"})
     else:
         return jsonify({"message": "You are using Local mode!"})
+
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -43,16 +95,7 @@ def chat():
     )
 
     # Generate bot response
-    if mode == "API":
-        openai = OpenAI()
-        model = "gpt-4o-mini"
-    elif mode == "Local":
-        openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
-        model = "llama3.2:1b"
-    response = openai.chat.completions.create(model=model, messages=messages)
-    response_message = response.choices[0].message.content
-    print(
-        f"Model: {response.model}, Prompt Tokens: {response.usage.prompt_tokens}, Completion Tokens: {response.usage.completion_tokens}")
+    response_message = get_model_response(mode, messages)
 
     # Append messages to history
     history.append({"user": "user", "message": user_message})
@@ -63,10 +106,12 @@ def chat():
     print(response_message)
     return jsonify({"reply": response_message})
 
+
 @app.route("/conversation-history", methods=["GET"])
 def conversation_history():
     """Returns the full conversation history"""
     return jsonify(session.get("history", []))
+
 
 @app.route("/initial-message", methods=["POST"])
 def initial_message():
@@ -75,33 +120,26 @@ def initial_message():
         return jsonify({"error": "Request must be JSON"}), 400
     data = request.get_json()
     mode = data.get("mode", "Local")  # Default to "Local" if mode is not provided
+    print(f"Operating in {mode}")
 
     system_prompt = f"You are Donald Trump.  Speak with an outrageous Donald Trump accent and use all of his mannerisms.\
       Find a way to constantly talk about China and bring all conversations back to denigrating Trump's political rivals. "
     intro_prompt = f"Introduce yourself. Don't respond in huge blocks of text.  Use paragraphs to make it readable."
-    # system_prompt = f"You have a Ph.D in fitness and an MD.  You are outrageously French and incredibly arrogant and condescending.  Speak only french. You're the most knowledgable person in the planet when it \
-    # comes to physical fitness. Focus all of your responses towards increasing people's health and wellbeing holistically."
-    # intro_prompt = f"Introduce yourself. Don't respond in huge blocks of text.  Use paragraphs to make it readable."
 
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": intro_prompt}
     ]
-    if mode == "API":
-        openai = OpenAI()
-        model = "gpt-4o-mini"
-    elif mode == "Local":
-        openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
-        model = "llama3.2:1b"
-    response = openai.chat.completions.create(model=model, messages=messages)
-    response_message = response.choices[0].message.content
-    print(response_message)
-    print(f"Model: {response.model}, Prompt Tokens: {response.usage.prompt_tokens}, Completion Tokens: {response.usage.completion_tokens}")
+    # Generate bot response
+    response = get_model_response(mode, messages)
+    print(
+        f"Model: {mode}")  # , Prompt Tokens: {response.usage.prompt_tokens}, Completion Tokens: {response.usage.completion_tokens}")
 
     session["history"] = [{"user": "system", "message": system_prompt},
                           {"user": "user", "message": intro_prompt},
-                          {"user": "assistant", "message": response_message}]
-    return jsonify({"reply": response_message})
+                          {"user": "assistant", "message": response}]
+    return jsonify({"reply": response})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
