@@ -53,3 +53,4 @@ dependencies:
       - flask_session
       - gunicorn
       - rdkit
+      - deepeval

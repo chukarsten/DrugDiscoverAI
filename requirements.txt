@@ -44,3 +44,4 @@ flask
 flask-session
 gunicorn
 rdkit
+deepeval

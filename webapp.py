@@ -1,16 +1,19 @@
 import os
-from prompts.prompts import intro_prompt, system_prompt # Import the prompts from prompts.py
+from prompts.prompts import intro_prompt, system_prompt  # Import the prompts from prompts.py
 
 import anthropic
 import google.generativeai
 import json
 
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
 from openai import OpenAI
 
 from tools.chemistry.chemistry import tools, validate_molecule, analyze_molecule
 
+# Automatically loads environment variables from a .env file into os.environ
+load_dotenv()
 app = Flask(__name__)
 
 # Configure Flask session (stores in server-side memory)
@@ -162,8 +165,6 @@ def initial_message():
     data = request.get_json()
     mode = data.get("mode", "Local")  # Default to "Local" if mode is not provided
     print(f"Operating in {mode}")
-
-
 
     messages = [
         {"role": "system", "content": system_prompt},
