@@ -1,3 +1,4 @@
+import base64
 import os
 from prompts.prompts import intro_prompt, system_prompt # Import the prompts from prompts.py
 
@@ -5,6 +6,8 @@ import anthropic
 import google.generativeai
 import json
 
+from io import BytesIO
+from PIL import Image
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
 from openai import OpenAI
@@ -65,6 +68,17 @@ def get_model_response(mode, messages):
             response = openai.chat.completions.create(model=model, messages=messages)
         response_message = response.choices[0].message.content
 
+        image_response = openai.images.generate(
+            model="dall-e-3",
+            prompt=f"An image showing a highly charactured Donald Trump speaking.",
+            size="1024x1024",
+            n=1,
+            response_format="b64_json",
+        )
+        image_base64 = image_response.data[0].b64_json
+        # image_data = base64.b64decode(image_base64)
+        # img_obj = Image.open(BytesIO(image_data))
+
     elif mode == "Local":
         openai = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
         model = "llama3.2:1b"
@@ -94,7 +108,7 @@ def get_model_response(mode, messages):
         response_message = response.content[0].text
 
     print(f"Model: {model}, Prompt Tokens: {input_tokens}, Completion Tokens: {output_tokens}")
-    return response_message
+    return response_message, image_base64
 
 
 @app.route("/")
@@ -170,14 +184,17 @@ def initial_message():
         {"role": "user", "content": intro_prompt}
     ]
     # Generate bot response
-    response = get_model_response(mode, messages)
+    response, image = get_model_response(mode, messages)
     print(
         f"Model: {mode}")  # , Prompt Tokens: {response.usage.prompt_tokens}, Completion Tokens: {response.usage.completion_tokens}")
 
     session["history"] = [{"user": "system", "message": system_prompt},
                           {"user": "user", "message": intro_prompt},
                           {"user": "assistant", "message": response}]
-    return jsonify({"reply": response})
+
+
+
+    return jsonify({"reply": response, "image": image})
 
 
 if __name__ == "__main__":

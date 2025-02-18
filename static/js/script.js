@@ -15,8 +15,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     // Helper functions
-    function appendMessage(content, senderClass) {
-        const htmlContent = DOMPurify.sanitize(md.render(content)); // Sanitize and convert markdown to HTML
+    function appendMessage(content, senderClass, image = null) {
+        let htmlContent = DOMPurify.sanitize(md.render(content)); // Sanitize and convert markdown to HTML
+        if (image) {
+            htmlContent += `<img src="data:image/png;base64,${image}" alt="Generated Image" />`;
+        }
         chatbox.innerHTML += `<div class='${senderClass}'>${htmlContent}</div>`;
         chatbox.scrollTop = chatbox.scrollHeight;
     }
@@ -73,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
-                appendMessage(`${data.reply}`, CLASS_ASSISTANT);
+                appendMessage(`${data.reply}`, CLASS_ASSISTANT, data.image);
             })
             .catch(error => {
                 handleFetchError(chatbox, 'Unable to load the initial message.');
