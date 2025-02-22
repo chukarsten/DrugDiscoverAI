@@ -1,22 +1,18 @@
-import os
-from prompts.prompts import intro_prompt, system_prompt # Import the prompts from prompts.py
-
-import anthropic
-import google.generativeai
 import json
+import os
 
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
+
+import anthropic
+import google.generativeai
+
 from openai import OpenAI
 
+from prompts.prompts import intro_prompt, system_prompt  # Import the prompts from prompts.py
 from tools.chemistry.chemistry import tools, validate_molecule, analyze_molecule
 
 app = Flask(__name__)
-
-# Configure Flask session (stores in server-side memory)
-app.config["SESSION_TYPE"] = "filesystem"
-app.config["SECRET_KEY"] = "supersecretkey"
-
 Session(app)
 
 # Check if Gemini is enabled
@@ -162,8 +158,6 @@ def initial_message():
     data = request.get_json()
     mode = data.get("mode", "Local")  # Default to "Local" if mode is not provided
     print(f"Operating in {mode}")
-
-
 
     messages = [
         {"role": "system", "content": system_prompt},
