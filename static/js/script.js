@@ -17,34 +17,77 @@ document.addEventListener('DOMContentLoaded', function () {
     const peerConnection = new RTCPeerConnection();
     const socket = io();
 
+    let mediaRecorder;
+    let audioChunks = [];
+    let recognition;
+
     // Handle voice button click
     const voiceButton = document.getElementById('voiceButton');
-    voiceButton.addEventListener('click', startVoiceRecognition);
+    voiceButton.addEventListener('click', startRecording);
 
-    function startVoiceRecognition() {
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    function startRecording() {
+        navigator.mediaDevices.getUserMedia({audio: true})
+            .then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.start();
+                console.log("MediaRecorder started");
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    if (audioChunks.length > 0) {
+                        const audioBlob = new Blob(audioChunks, {type: 'audio/wav'});
+                        const reader = new FileReader();
+                        reader.readAsArrayBuffer(audioBlob);
+                        reader.onloadend = () => {
+                            const audioArrayBuffer = reader.result;
+                            socket.emit('audio', audioArrayBuffer);
+                            console.log("Audio data sent to server");
+                        };
+                        audioChunks = [];
+                    } else {
+                        console.log("No audio data available");
+                    }
+                };
+
+                startSpeechRecognition();
+            })
+            .catch(error => {
+                console.error('Error accessing microphone:', error);
+            });
+    }
+
+    function startSpeechRecognition() {
+        recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
         recognition.lang = 'en-US';
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
 
+        recognition.onend = () => {
+            console.log("User stopped talking.")
+            mediaRecorder.stop();
+        };
+
         recognition.start();
-
-        recognition.onresult = function (event) {
-            const voiceMessage = event.results[0][0].transcript;
-            appendMessage(voiceMessage, CLASS_USER);
-            const mode = determineMode();
-            socket.emit('message', {message: voiceMessage, mode});
-        };
-
-        recognition.onerror = function (event) {
-            console.error('Speech recognition error:', event.error);
-        };
+        console.log("Speech Recognition Started.")
     }
+
+    socket.on('transcription', function (data) {
+        appendMessage(data.transcription, CLASS_ASSISTANT);
+    });
 
     // Helper functions
     function appendMessage(content, senderClass) {
         const htmlContent = DOMPurify.sanitize(md.render(content)); // Sanitize and convert markdown to HTML
         chatbox.innerHTML += `<div class='${senderClass}'>${htmlContent}</div>`;
+        chatbox.scrollTop = chatbox.scrollHeight;
+        scrollToBottom();
+    }
+
+    function scrollToBottom() {
+        console.log("Scrolling to bottom");
         chatbox.scrollTop = chatbox.scrollHeight;
     }
 
