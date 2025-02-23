@@ -1,5 +1,6 @@
 import os
-from prompts.prompts import intro_prompt, system_prompt # Import the prompts from prompts.py
+from dotenv import load_dotenv
+from prompts.prompts import intro_prompt, system_prompt  # Import the prompts from prompts.py
 
 import anthropic
 import google.generativeai
@@ -7,17 +8,28 @@ import json
 
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
+from flask_socketio import SocketIO, emit
 from openai import OpenAI
 
 from tools.chemistry.chemistry import tools, validate_molecule, analyze_molecule
 
 app = Flask(__name__)
 
+load_dotenv()
+
 # Configure Flask session (stores in server-side memory)
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SECRET_KEY"] = "supersecretkey"
 
 Session(app)
+socketio = SocketIO(app)
+
+# API Keys
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 # Check if Gemini is enabled
 GEMINI_ENABLED = os.getenv("GEMINI_ENABLED", "false").lower() == "true"
@@ -101,7 +113,7 @@ def get_model_response(mode, messages):
 def index():
     if "history" not in session:
         session["history"] = [{"user": "bot", "message": initial_message()}]
-
+    print("test")
     return render_template("index.html", gemini_enabled=GEMINI_ENABLED)
 
 
@@ -117,23 +129,19 @@ def api_mode():
         return jsonify({"message": "You are using Local mode!"})
 
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    user_message = request.json.get("message")
-    mode = request.json.get("mode")
-    print(f"Mode: {mode}")
-
+@socketio.on('message')
+def handle_message(data):
+    user_message = data.get("message")
+    mode = data.get("mode")
+    print(f"Socket IO Mode: {mode}")
     print(user_message)
+
     # Retrieve conversation history
     history = session.get("history", [])
 
     # Rebuild LLM message history
-    messages = []
-    for message in history:
-        messages.append({"role": message["user"], "content": message["message"]})
-    messages.append(
-        {"role": "user", "content": user_message}
-    )
+    messages = [{"role": message["user"], "content": message["message"]} for message in history]
+    messages.append({"role": "user", "content": user_message})
 
     # Generate bot response
     response_message = get_model_response(mode, messages)
@@ -145,7 +153,7 @@ def chat():
     # Save back to session
     session["history"] = history
     print(response_message)
-    return jsonify({"reply": response_message})
+    emit('response', {'reply': response_message})
 
 
 @app.route("/conversation-history", methods=["GET"])
@@ -163,8 +171,6 @@ def initial_message():
     mode = data.get("mode", "Local")  # Default to "Local" if mode is not provided
     print(f"Operating in {mode}")
 
-
-
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": intro_prompt}
@@ -181,4 +187,4 @@ def initial_message():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
