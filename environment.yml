@@ -55,3 +55,4 @@ dependencies:
       - rdkit
       - flask-socketio
       - eventlet
+      - faster-whisper

@@ -155,6 +155,12 @@ def handle_message(data):
     print(response_message)
     emit('response', {'reply': response_message})
 
+@socketio.on('audio')
+def handle_audio(data):
+    # Process the audio data received from the client
+    print("Audio data received")
+    # You can add your processing logic here
+    # For example, save the audio data to a file or perform speech recognition
 
 @app.route("/conversation-history", methods=["GET"])
 def conversation_history():

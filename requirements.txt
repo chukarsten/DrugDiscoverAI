@@ -46,3 +46,4 @@ gunicorn
 rdkit
 flask-socketio
 eventlet
+faster-whisper
