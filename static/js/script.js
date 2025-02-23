@@ -14,7 +14,32 @@ document.addEventListener('DOMContentLoaded', function () {
     var md = window.markdownit();  // Create a markdown-it instance
 
     // Initialize Socket.IO
+    const peerConnection = new RTCPeerConnection();
     const socket = io();
+
+    // Handle voice button click
+    const voiceButton = document.getElementById('voiceButton');
+    voiceButton.addEventListener('click', startVoiceRecognition);
+
+    function startVoiceRecognition() {
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.start();
+
+        recognition.onresult = function (event) {
+            const voiceMessage = event.results[0][0].transcript;
+            appendMessage(voiceMessage, CLASS_USER);
+            const mode = determineMode();
+            socket.emit('message', {message: voiceMessage, mode});
+        };
+
+        recognition.onerror = function (event) {
+            console.error('Speech recognition error:', event.error);
+        };
+    }
 
     // Helper functions
     function appendMessage(content, senderClass) {
