@@ -1,11 +1,17 @@
 import os
+
+# Prevents libiomp5md.dll conflict
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 from dotenv import load_dotenv
 from prompts.prompts import intro_prompt, system_prompt  # Import the prompts from prompts.py
 
 import anthropic
 import google.generativeai
 import json
+import numpy as np
 
+from faster_whisper import WhisperModel
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
 from flask_socketio import SocketIO, emit
@@ -16,6 +22,7 @@ from tools.chemistry.chemistry import tools, validate_molecule, analyze_molecule
 app = Flask(__name__)
 
 load_dotenv()
+
 
 # Configure Flask session (stores in server-side memory)
 app.config["SESSION_TYPE"] = "filesystem"
@@ -157,10 +164,25 @@ def handle_message(data):
 
 @socketio.on('audio')
 def handle_audio(data):
-    # Process the audio data received from the client
-    print("Audio data received")
-    # You can add your processing logic here
-    # For example, save the audio data to a file or perform speech recognition
+    model_size = "tiny"
+    model = WhisperModel(model_size, device="cpu", compute_type="int8")
+
+    # Ensure the buffer size is a multiple of the element size
+    if len(data) % 2 != 0:
+        data = data[:-1]
+
+    # Convert ArrayBuffer to numpy array
+    audio_array = np.frombuffer(data, dtype=np.int16)
+
+    # Transcribe the audio
+    segments, info = model.transcribe(audio_array)
+    breakpoint()
+    # Process the transcription result
+    transcription = " ".join([segment.text for segment in segments])
+    print("Transcription:", transcription)
+
+    # Emit the transcription result back to the client
+    emit('transcription', {'transcription': transcription})
 
 @app.route("/conversation-history", methods=["GET"])
 def conversation_history():
