@@ -13,6 +13,33 @@ document.addEventListener('DOMContentLoaded', function () {
     const chatbox = document.getElementById("chatbox");
     var md = window.markdownit();  // Create a markdown-it instance
 
+    // Initialize Socket.IO
+    const peerConnection = new RTCPeerConnection();
+    const socket = io();
+
+    // Handle voice button click
+    const voiceButton = document.getElementById('voiceButton');
+    voiceButton.addEventListener('click', startVoiceRecognition);
+
+    function startVoiceRecognition() {
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.start();
+
+        recognition.onresult = function (event) {
+            const voiceMessage = event.results[0][0].transcript;
+            appendMessage(voiceMessage, CLASS_USER);
+            const mode = determineMode();
+            socket.emit('message', {message: voiceMessage, mode});
+        };
+
+        recognition.onerror = function (event) {
+            console.error('Speech recognition error:', event.error);
+        };
+    }
 
     // Helper functions
     function appendMessage(content, senderClass) {
@@ -31,40 +58,30 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Main functionality
-    window.sendMessage = function() {
+    window.sendMessage = function () {
         const userInputValue = userInput.value.trim();
         if (!userInputValue) return;
 
         appendMessage(`${userInputValue}`, CLASS_USER);
 
         const mode = determineMode();
-        fetch("/chat", {
-            method: "POST",
-            body: JSON.stringify({ message: userInputValue, mode }),
-            headers: { "Content-Type": "application/json" }
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP Error: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                appendMessage(`${data.reply}`, CLASS_ASSISTANT);
-            })
-            .catch(error => {
-                handleFetchError(chatbox, 'Unable to process your message.');
-            });
+        socket.emit('message', {message: userInputValue, mode});
 
         userInput.value = "";
     }
+
+    // Listen for the response event from the server
+    socket.on('response', function (data) {
+        const responseMessage = data.reply;
+        appendMessage(responseMessage, CLASS_ASSISTANT);
+    });
 
     function loadInitialMessage() {
         const mode = determineMode();
         fetch("/initial-message", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mode })
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({mode})
         })
             .then(response => {
                 if (!response.ok) {
