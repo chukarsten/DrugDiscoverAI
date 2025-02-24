@@ -56,3 +56,4 @@ dependencies:
       - flask-socketio
       - eventlet
       - faster-whisper
+      - librosa

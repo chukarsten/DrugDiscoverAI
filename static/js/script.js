@@ -62,8 +62,9 @@ function handleMediaRecorderStop() {
         reader.readAsArrayBuffer(audioBlob);
         reader.onloadend = () => {
             const audioArrayBuffer = reader.result;
-            socket.emit('audio', audioArrayBuffer);
-            console.log("Audio data sent to server");
+            const sampleRate = mediaRecorder.stream.getAudioTracks()[0].getSettings().sampleRate;
+            socket.emit('audio', { audioArrayBuffer, sampleRate });
+            console.log("Audio data sent to server with sample rate:", sampleRate);
         };
         audioChunks = [];
     } else {
@@ -188,4 +189,12 @@ socket.on('response', function (data) {
 // Listen for the transcription event from the server
 socket.on('transcription', function (data) {
     appendMessage(data.transcription, CLASS_ASSISTANT);
+
+    // Create a Blob from the audio data
+    const audioBlob = new Blob([data.audioArrayBuffer], { type: 'audio/wav' });
+
+    // Create an audio element and play the audio
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audio.play();
 });
