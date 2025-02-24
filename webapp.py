@@ -1,23 +1,43 @@
 import os
-from prompts.prompts import intro_prompt, system_prompt # Import the prompts from prompts.py
+
+# Prevents libiomp5md.dll conflict
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+from dotenv import load_dotenv
+from prompts.prompts import intro_prompt, system_prompt  # Import the prompts from prompts.py
 
 import anthropic
 import google.generativeai
 import json
+import librosa
+import numpy as np
 
+from faster_whisper import WhisperModel
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
+from flask_socketio import SocketIO, emit
 from openai import OpenAI
 
 from tools.chemistry.chemistry import tools, validate_molecule, analyze_molecule
 
 app = Flask(__name__)
 
+load_dotenv()
+
+
 # Configure Flask session (stores in server-side memory)
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SECRET_KEY"] = "supersecretkey"
 
 Session(app)
+socketio = SocketIO(app)
+
+# API Keys
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 # Check if Gemini is enabled
 GEMINI_ENABLED = os.getenv("GEMINI_ENABLED", "false").lower() == "true"
@@ -101,7 +121,7 @@ def get_model_response(mode, messages):
 def index():
     if "history" not in session:
         session["history"] = [{"user": "bot", "message": initial_message()}]
-
+    print("test")
     return render_template("index.html", gemini_enabled=GEMINI_ENABLED)
 
 
@@ -117,23 +137,19 @@ def api_mode():
         return jsonify({"message": "You are using Local mode!"})
 
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    user_message = request.json.get("message")
-    mode = request.json.get("mode")
-    print(f"Mode: {mode}")
-
+@socketio.on('message')
+def handle_message(data):
+    user_message = data.get("message")
+    mode = data.get("mode")
+    print(f"Socket IO Mode: {mode}")
     print(user_message)
+
     # Retrieve conversation history
     history = session.get("history", [])
 
     # Rebuild LLM message history
-    messages = []
-    for message in history:
-        messages.append({"role": message["user"], "content": message["message"]})
-    messages.append(
-        {"role": "user", "content": user_message}
-    )
+    messages = [{"role": message["user"], "content": message["message"]} for message in history]
+    messages.append({"role": "user", "content": user_message})
 
     # Generate bot response
     response_message = get_model_response(mode, messages)
@@ -145,8 +161,67 @@ def chat():
     # Save back to session
     session["history"] = history
     print(response_message)
-    return jsonify({"reply": response_message})
+    emit('response', {'reply': response_message})
 
+@socketio.on('audio')
+def handle_audio(data):
+    model_size = "small"
+    model = WhisperModel(model_size, device="cpu", compute_type="int8")
+
+    audio_array_buffer = data['audioArrayBuffer']
+    sample_rate = data['sampleRate']
+    print(f"Received audio array buffer with length {len(audio_array_buffer)} and sample rate {sample_rate}")
+
+    # # Ensure the buffer size is a multiple of the element size
+    # if len(audio_array_buffer) % 2 != 0:  # 2 bytes for np.int16
+    #     audio_array_buffer = audio_array_buffer[:-(len(audio_array_buffer) % 2)]
+
+    # Convert ArrayBuffer to numpy array
+    audio_array = np.frombuffer(audio_array_buffer, dtype=np.int16)
+
+    import matplotlib.pyplot as plt
+
+    # Plot the first 100 samples of the audio array
+    plt.plot(audio_array)
+    plt.title("Audio Sample Waveform")
+    plt.xlabel("Sample Index")
+    plt.ylabel("Amplitude")
+    breakpoint()
+    plt.show()
+
+    import soundfile as sf
+    sf.write("debug_audio1.wav", audio_array, sample_rate)
+
+    # Check for NaN or infinite values and clean the array
+    if not np.isfinite(audio_array).all():
+        audio_array = np.nan_to_num(audio_array)
+
+    sf.write("debug_audio2.wav", audio_array, sample_rate)
+    # Log the first few samples of the audio array
+    print(f"First few samples of audio array: {audio_array[:10]}")
+
+    # # Convert to 16k hz for Whisper
+    # if sample_rate != 16000:
+    #     print("Resampling audio to 16k Hz")
+    #     audio_array = librosa.resample(audio_array, orig_sr=sample_rate, target_sr=16000)
+
+    # Log the shape and dtype of the audio array after resampling
+    print(f"Audio array shape after resampling: {audio_array.shape}, dtype: {audio_array.dtype}")
+
+    sf.write("debug_audio3.wav", audio_array, sample_rate)
+
+    # Transcribe the audio
+    segments, info = model.transcribe(audio_array, beam_size=5, temperature=0.2)
+
+    # Log the transcription info
+    print(f"Transcription info: {info}")
+
+    # Process the transcription result
+    transcription = " ".join([segment.text for segment in segments])
+    print("Transcription:", transcription)
+
+    # Emit the transcription result and audio data back to the client
+    emit('transcription', {'transcription': transcription, 'audioArrayBuffer': audio_array_buffer, 'sampleRate': sample_rate})
 
 @app.route("/conversation-history", methods=["GET"])
 def conversation_history():
@@ -162,8 +237,6 @@ def initial_message():
     data = request.get_json()
     mode = data.get("mode", "Local")  # Default to "Local" if mode is not provided
     print(f"Operating in {mode}")
-
-
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -181,4 +254,4 @@ def initial_message():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)

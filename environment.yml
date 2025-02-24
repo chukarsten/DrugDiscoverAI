@@ -53,3 +53,7 @@ dependencies:
       - flask_session
       - gunicorn
       - rdkit
+      - flask-socketio
+      - eventlet
+      - faster-whisper
+      - librosa

@@ -44,3 +44,7 @@ flask
 flask-session
 gunicorn
 rdkit
+flask-socketio
+eventlet
+faster-whisper
+librosa
