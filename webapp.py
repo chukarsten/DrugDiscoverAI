@@ -1,3 +1,4 @@
+import io
 import os
 
 # Prevents libiomp5md.dll conflict
@@ -23,7 +24,6 @@ from tools.chemistry.chemistry import tools, validate_molecule, analyze_molecule
 app = Flask(__name__)
 
 load_dotenv()
-
 
 # Configure Flask session (stores in server-side memory)
 app.config["SESSION_TYPE"] = "filesystem"
@@ -163,6 +163,7 @@ def handle_message(data):
     print(response_message)
     emit('response', {'reply': response_message})
 
+
 @socketio.on('audio')
 def handle_audio(data):
     model_size = "small"
@@ -172,46 +173,16 @@ def handle_audio(data):
     sample_rate = data['sampleRate']
     print(f"Received audio array buffer with length {len(audio_array_buffer)} and sample rate {sample_rate}")
 
-    # # Ensure the buffer size is a multiple of the element size
-    # if len(audio_array_buffer) % 2 != 0:  # 2 bytes for np.int16
-    #     audio_array_buffer = audio_array_buffer[:-(len(audio_array_buffer) % 2)]
+    with open("debug_raw.wav", "wb") as f:
+        f.write(audio_array_buffer)
+    # Ensure the buffer size is a multiple of the element size
+    if len(audio_array_buffer) % 2 != 0:  # 2 bytes for np.int16
+        audio_array_buffer = audio_array_buffer[:-(len(audio_array_buffer) % 2)]
 
-    # Convert ArrayBuffer to numpy array
-    audio_array = np.frombuffer(audio_array_buffer, dtype=np.int16)
-
-    import matplotlib.pyplot as plt
-
-    # Plot the first 100 samples of the audio array
-    plt.plot(audio_array)
-    plt.title("Audio Sample Waveform")
-    plt.xlabel("Sample Index")
-    plt.ylabel("Amplitude")
-    breakpoint()
-    plt.show()
-
-    import soundfile as sf
-    sf.write("debug_audio1.wav", audio_array, sample_rate)
-
-    # Check for NaN or infinite values and clean the array
-    if not np.isfinite(audio_array).all():
-        audio_array = np.nan_to_num(audio_array)
-
-    sf.write("debug_audio2.wav", audio_array, sample_rate)
-    # Log the first few samples of the audio array
-    print(f"First few samples of audio array: {audio_array[:10]}")
-
-    # # Convert to 16k hz for Whisper
-    # if sample_rate != 16000:
-    #     print("Resampling audio to 16k Hz")
-    #     audio_array = librosa.resample(audio_array, orig_sr=sample_rate, target_sr=16000)
-
-    # Log the shape and dtype of the audio array after resampling
-    print(f"Audio array shape after resampling: {audio_array.shape}, dtype: {audio_array.dtype}")
-
-    sf.write("debug_audio3.wav", audio_array, sample_rate)
+    bytes_io = io.BytesIO(audio_array_buffer)
 
     # Transcribe the audio
-    segments, info = model.transcribe(audio_array, beam_size=5, temperature=0.2)
+    segments, info = model.transcribe(bytes_io, beam_size=5, temperature=0.2)
 
     # Log the transcription info
     print(f"Transcription info: {info}")
@@ -221,7 +192,9 @@ def handle_audio(data):
     print("Transcription:", transcription)
 
     # Emit the transcription result and audio data back to the client
-    emit('transcription', {'transcription': transcription, 'audioArrayBuffer': audio_array_buffer, 'sampleRate': sample_rate})
+    emit('transcription',
+         {'transcription': transcription, 'audioArrayBuffer': audio_array_buffer, 'sampleRate': sample_rate})
+
 
 @app.route("/conversation-history", methods=["GET"])
 def conversation_history():
