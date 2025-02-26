@@ -20,10 +20,11 @@ const socket = io();
 let mediaRecorder;
 let audioChunks = [];
 let recognition;
+let isVoiceModeOn = false;  // Track the voice mode state
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', initialize);
-voiceButton.addEventListener('click', startRecording);
+voiceButton.addEventListener('click', toggleVoiceMode);
 userInput.addEventListener("keypress", handleKeyPress);
 dropdown.addEventListener('change', handleDropdownChange);
 window.onload = loadInitialMessage;
@@ -33,9 +34,20 @@ function initialize() {
     console.log("Application initialized");
 }
 
+// Toggle voice mode
+function toggleVoiceMode() {
+    isVoiceModeOn = !isVoiceModeOn;
+    voiceButton.style.backgroundColor = isVoiceModeOn ? 'blue' : '';  // Change button color
+    if (isVoiceModeOn) {
+        startRecording();
+    } else {
+        stopRecording();
+    }
+}
+
 // Start recording audio
 function startRecording() {
-    navigator.mediaDevices.getUserMedia({ audio: true })
+    navigator.mediaDevices.getUserMedia({audio: true})
         .then(stream => {
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.start();
@@ -54,19 +66,29 @@ function startRecording() {
         });
 }
 
+// Stop recording audio
+function stopRecording() {
+    if (mediaRecorder) {
+        mediaRecorder.stop();
+    }
+    if (recognition) {
+        recognition.stop();
+    }
+}
+
 // Handle MediaRecorder stop event
 function handleMediaRecorderStop() {
     if (audioChunks.length > 0) {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        const audioBlob = new Blob(audioChunks, {type: 'audio/wav'});
         const reader = new FileReader();
         reader.readAsArrayBuffer(audioBlob);
         reader.onloadend = () => {
             const audioArrayBuffer = reader.result;
             const sampleRate = mediaRecorder.stream.getAudioTracks()[0].getSettings().sampleRate;
-            socket.emit('audio', { audioArrayBuffer, sampleRate });
+            socket.emit('audio', {audioArrayBuffer, sampleRate});
             console.log("Audio data sent to server with sample rate:", sampleRate);
+            audioChunks = [];
         };
-        audioChunks = [];
     } else {
         console.log("No audio data available");
     }
@@ -79,9 +101,22 @@ function startSpeechRecognition() {
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
+    recognition.onresult = event => {
+        const transcript = event.results[0][0].transcript.trim();
+        if (transcript) {
+            sendMessage(transcript);
+        }
+    };
+
     recognition.onend = () => {
-        console.log("User stopped talking.");
-        mediaRecorder.stop();
+        handleMediaRecorderStop();
+        if (isVoiceModeOn) {
+            console.log("Restarting recognition");
+            recognition.start();  // Restart recognition for continuous listening
+        } else {
+            console.log("Turning off recognition");
+            mediaRecorder.stop();
+        }
     };
 
     recognition.start();
@@ -104,7 +139,7 @@ function sendMessage() {
     appendMessage(userInputValue, CLASS_USER);
 
     const mode = determineMode();
-    socket.emit('message', { message: userInputValue, mode });
+    socket.emit('message', {message: userInputValue, mode});
 
     userInput.value = "";
 }
@@ -139,8 +174,8 @@ function loadInitialMessage() {
     const mode = determineMode();
     fetch("/initial-message", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode })
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({mode})
     })
         .then(response => {
             if (!response.ok) {
@@ -191,7 +226,7 @@ socket.on('transcription', function (data) {
     appendMessage(data.transcription, CLASS_ASSISTANT);
 
     // Create a Blob from the audio data
-    const audioBlob = new Blob([data.audioArrayBuffer], { type: 'audio/wav' });
+    const audioBlob = new Blob([data.audioArrayBuffer], {type: 'audio/wav'});
 
     // Create an audio element and play the audio
     const audioUrl = URL.createObjectURL(audioBlob);
