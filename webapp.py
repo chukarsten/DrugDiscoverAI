@@ -166,7 +166,7 @@ def handle_message(data):
 
 @socketio.on('audio')
 def handle_audio(data):
-    model_size = "small"
+    model_size = "tiny"
     model = WhisperModel(model_size, device="cpu", compute_type="int8")
 
     audio_array_buffer = data['audioArrayBuffer']
