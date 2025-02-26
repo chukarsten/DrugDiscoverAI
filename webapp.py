@@ -173,8 +173,6 @@ def handle_audio(data):
     sample_rate = data['sampleRate']
     print(f"Received audio array buffer with length {len(audio_array_buffer)} and sample rate {sample_rate}")
 
-    with open("debug_raw.wav", "wb") as f:
-        f.write(audio_array_buffer)
     # Ensure the buffer size is a multiple of the element size
     if len(audio_array_buffer) % 2 != 0:  # 2 bytes for np.int16
         audio_array_buffer = audio_array_buffer[:-(len(audio_array_buffer) % 2)]
