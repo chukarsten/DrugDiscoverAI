@@ -1,11 +1,19 @@
+import io
 import os
+
+# Prevents libiomp5md.dll conflict
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 from dotenv import load_dotenv
 from prompts.prompts import intro_prompt, system_prompt  # Import the prompts from prompts.py
 
 import anthropic
 import google.generativeai
 import json
+import librosa
+import numpy as np
 
+from faster_whisper import WhisperModel
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
 from flask_socketio import SocketIO, emit
@@ -154,6 +162,36 @@ def handle_message(data):
     session["history"] = history
     print(response_message)
     emit('response', {'reply': response_message})
+
+
+@socketio.on('audio')
+def handle_audio(data):
+    model_size = "small"
+    model = WhisperModel(model_size, device="cpu", compute_type="int8")
+
+    audio_array_buffer = data['audioArrayBuffer']
+    sample_rate = data['sampleRate']
+    print(f"Received audio array buffer with length {len(audio_array_buffer)} and sample rate {sample_rate}")
+
+    # Ensure the buffer size is a multiple of the element size
+    if len(audio_array_buffer) % 2 != 0:  # 2 bytes for np.int16
+        audio_array_buffer = audio_array_buffer[:-(len(audio_array_buffer) % 2)]
+
+    bytes_io = io.BytesIO(audio_array_buffer)
+
+    # Transcribe the audio
+    segments, info = model.transcribe(bytes_io, beam_size=5, temperature=0.2)
+
+    # Log the transcription info
+    print(f"Transcription info: {info}")
+
+    # Process the transcription result
+    transcription = " ".join([segment.text for segment in segments])
+    print("Transcription:", transcription)
+
+    # Emit the transcription result and audio data back to the client
+    emit('transcription',
+         {'transcription': transcription, 'audioArrayBuffer': audio_array_buffer, 'sampleRate': sample_rate})
 
 
 @app.route("/conversation-history", methods=["GET"])
