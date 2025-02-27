@@ -39,8 +39,10 @@ function toggleVoiceMode() {
     isVoiceModeOn = !isVoiceModeOn;
     voiceButton.style.backgroundColor = isVoiceModeOn ? 'blue' : '';  // Change button color
     if (isVoiceModeOn) {
+        console.log("Toggling Voice Mode On")
         startRecording();
     } else {
+        console.log("Toggling Voice Mode Off")
         stopRecording();
     }
 }
@@ -54,6 +56,7 @@ function startRecording() {
             console.log("MediaRecorder started");
 
             mediaRecorder.ondataavailable = event => {
+                console.log("Data available");
                 audioChunks.push(event.data);
             };
 
@@ -64,6 +67,40 @@ function startRecording() {
         .catch(error => {
             console.error('Error accessing microphone:', error);
         });
+}
+
+// Start speech recognition
+function startSpeechRecognition() {
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = event => {
+        const transcript = event.results[0][0].transcript.trim();
+        if (transcript) {
+            sendMessage(transcript);
+        }
+    };
+
+    recognition.onend = () => {
+        handleMediaRecorderStop();
+        if (isVoiceModeOn) {
+            console.log("Restarting recognition");
+            recognition.start();  // Restart recognition for continuous listening
+
+            // Trigger the ondataavailable event to send the last audio chunk
+            console.log("Restarting MediaRecorder");
+            mediaRecorder.stop();
+            mediaRecorder.start();
+        } else {
+            console.log("Turning off recognition");
+            mediaRecorder.stop();
+        }
+    };
+
+    recognition.start();
+    console.log("Speech Recognition Started.");
 }
 
 // Stop recording audio
@@ -94,34 +131,6 @@ function handleMediaRecorderStop() {
     }
 }
 
-// Start speech recognition
-function startSpeechRecognition() {
-    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = event => {
-        const transcript = event.results[0][0].transcript.trim();
-        if (transcript) {
-            sendMessage(transcript);
-        }
-    };
-
-    recognition.onend = () => {
-        handleMediaRecorderStop();
-        if (isVoiceModeOn) {
-            console.log("Restarting recognition");
-            recognition.start();  // Restart recognition for continuous listening
-        } else {
-            console.log("Turning off recognition");
-            mediaRecorder.stop();
-        }
-    };
-
-    recognition.start();
-    console.log("Speech Recognition Started.");
-}
 
 // Handle key press event in user input
 function handleKeyPress(event) {
@@ -223,13 +232,6 @@ socket.on('response', function (data) {
 
 // Listen for the transcription event from the server
 socket.on('transcription', function (data) {
-    appendMessage(data.transcription, CLASS_ASSISTANT);
-
-    // Create a Blob from the audio data
-    const audioBlob = new Blob([data.audioArrayBuffer], {type: 'audio/wav'});
-
-    // Create an audio element and play the audio
-    const audioUrl = URL.createObjectURL(audioBlob);
-    const audio = new Audio(audioUrl);
-    audio.play();
+    appendMessage(data.transcription, CLASS_USER);
+    console.log("Transcription received:", data.transcription);
 });
