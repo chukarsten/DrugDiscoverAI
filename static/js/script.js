@@ -96,6 +96,7 @@ function startSpeechRecognition() {
         } else {
             console.log("Turning off recognition");
             mediaRecorder.stop();
+            recognition.stop();
         }
     };
 
@@ -122,7 +123,8 @@ function handleMediaRecorderStop() {
         reader.onloadend = () => {
             const audioArrayBuffer = reader.result;
             const sampleRate = mediaRecorder.stream.getAudioTracks()[0].getSettings().sampleRate;
-            socket.emit('audio', {audioArrayBuffer, sampleRate});
+            const mode = determineMode();
+            socket.emit('audio', {audioArrayBuffer, sampleRate, mode});
             console.log("Audio data sent to server with sample rate:", sampleRate);
             audioChunks = [];
         };

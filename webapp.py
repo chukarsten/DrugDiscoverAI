@@ -192,6 +192,8 @@ def handle_audio(data):
     # Emit the transcription result and audio data back to the client
     emit('transcription',
          {'transcription': transcription, 'audioArrayBuffer': audio_array_buffer, 'sampleRate': sample_rate})
+    data["message"] = transcription
+    handle_message(data)
 
 
 @app.route("/conversation-history", methods=["GET"])
